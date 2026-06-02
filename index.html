@@ -100,7 +100,7 @@ const SCHED_LBL={daily:"일간",weekly:"주간",monthly:"월간",quarterly:"분�
 const WDAY_LBL=["월","화","수","목","금","토","일"];
 const MONTH_LBL=["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 
-const EMPTY_PROJ={id:"",name:"",category:"project",memo:"",vendorIds:[],stage:{proto:"pending",working_sample:"pending",tp:"pending",mp:"pending"},createdAt:""};
+const EMPTY_PROJ={id:"",name:"",category:"project",memo:"",vendorIds:[],stage:{proto:"pending",working_sample:"pending",tp:"pending",mp:"pending"},isTravel:false,travelStart:"",travelEnd:"",createdAt:""};
 const EMPTY_SUB= {id:"",projectId:"",name:"",memo:"",vendorIds:[],createdAt:""};
 const EMPTY_TASK={id:"",subGroupId:"",title:"",status:"todo",priority:"normal",deadline:"",memo:"",vendorIds:[],isMeeting:false,meetingTime:"",meetingEndTime:"",createdAt:""};
 const EMPTY_VENDOR={id:"",company:"",contact:"",phone:"",email:"",address:"",memo:"",createdAt:""};
@@ -172,7 +172,8 @@ const ProjRow=({proj,subGroups,tasks,selected,onSelect,onEdit,onDelete})=>{
         </div>
       </div>
       {/* 단계 컴팩트 */}
-      {proj.stage&&<div style={{marginTop:5}}><StageCompact stage={proj.stage}/></div>}
+      {proj.stage&&(proj.category==="project"||proj.category==="misc")&&<div style={{marginTop:5}}><StageCompact stage={proj.stage}/></div>}
+      {proj.isTravel&&proj.travelStart&&<div style={{color:"#7C3AED",fontSize:11,marginTop:4}}>✈️ {proj.travelStart}{proj.travelEnd&&` ~ ${proj.travelEnd}`}</div>}
       {all.length>0&&(
         <div style={{marginTop:5}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#94A3B8"}}>
@@ -182,6 +183,27 @@ const ProjRow=({proj,subGroups,tasks,selected,onSelect,onEdit,onDelete})=>{
           <ProgBar done={done} total={all.length} inProg={inProg}/>
         </div>
       )}
+    </div>
+  );
+};
+
+/* ── 카테고리 섹션 헤더 ── */
+const CAT_ORDER=["project","misc","personal"];
+const CatSection=({cat,projects,subGroups,tasks,selProjId,setSelProjId,setSelSubId,onProjModal,onDelProj,mode="desktop"})=>{
+  const c=CATS[cat];const ps=projects.filter(p=>p.category===cat);
+  if(!ps.length)return null;
+  return(
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 4px",marginBottom:4,borderBottom:`1.5px solid ${c.border}`}}>
+        <span style={{color:c.color,fontSize:11,fontWeight:700,letterSpacing:"0.5px"}}>{c.icon} {c.label}</span>
+        <span style={{background:c.bg,color:c.color,fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:8}}>{ps.length}</span>
+      </div>
+      {ps.map(p=>(
+        <ProjRow key={p.id} proj={p} subGroups={subGroups} tasks={tasks}
+          selected={selProjId===p.id}
+          onSelect={()=>{const n=p.id===selProjId?null:p.id;setSelProjId(n);setSelSubId(null);}}
+          onEdit={()=>onProjModal(p)} onDelete={()=>onDelProj(p.id)}/>
+      ))}
     </div>
   );
 };
@@ -293,12 +315,29 @@ const ProjModal=({proj,vendors=[],onSave,onClose})=>{
                 </button>);})}
             </div>
           </div>
-          {/* 단계 진행 현황 */}
+          {/* 단계 진행 현황: 프로젝트/기타업무만 */}
+          {(f.category==="project"||f.category==="misc")&&(
           <div style={{background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:8,padding:12}}>
             <label style={{...sLabel,marginBottom:10}}>단계 진행 현황</label>
             <StageProg stage={f.stage} onToggle={toggleStage}/>
             <div style={{color:"#CBD5E1",fontSize:10,marginTop:6,textAlign:"center"}}>각 단계 클릭 → 대기 → 진행 → 완료 → 이슈</div>
-          </div>
+          </div>)}
+          {/* 여행: 개인만 */}
+          {f.category==="personal"&&(
+          <div style={{background:"rgba(167,139,250,0.05)",border:"1px solid rgba(167,139,250,0.2)",borderRadius:8,padding:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:f.isTravel?12:0}}>
+              <button onClick={()=>set("isTravel",!f.isTravel)} style={{width:38,height:22,borderRadius:11,background:f.isTravel?"#7C3AED":"#D1D5DB",border:"none",position:"relative",cursor:"pointer",transition:"background 0.2s",flexShrink:0}}>
+                <span style={{position:"absolute",top:3,left:f.isTravel?19:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",display:"block"}}/>
+              </button>
+              <span style={{color:f.isTravel?"#7C3AED":"#64748B",fontSize:13,fontWeight:f.isTravel?600:400}}>✈️ 여행으로 등록</span>
+            </div>
+            {f.isTravel&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div><label style={sLabel}>출발일</label><input type="date" value={f.travelStart} onChange={e=>set("travelStart",e.target.value)} style={sInput}/></div>
+                <div><label style={sLabel}>귀국일</label><input type="date" value={f.travelEnd} onChange={e=>set("travelEnd",e.target.value)} style={sInput}/></div>
+              </div>
+            )}
+          </div>)}
           <div><label style={sLabel}>메모</label><textarea value={f.memo} onChange={e=>set("memo",e.target.value)} placeholder="메모를 입력하세요" rows={2} style={{...sInput,resize:"vertical",lineHeight:1.5}}/></div>
           <VendorSelect vendors={vendors} vendorIds={f.vendorIds||[]} onChange={v=>set("vendorIds",v)}/>
         </div>
@@ -363,8 +402,8 @@ const TaskModal=({task,projName,subName,vendors=[],onSave,onClose})=>{
             </div>
             {f.isMeeting&&(
               <div style={{display:"flex",gap:10,marginTop:10}}>
-                <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>시작 시간</label><input type="time" value={f.meetingTime} onChange={e=>set("meetingTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
-                <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>종료 시간</label><input type="time" value={f.meetingEndTime} onChange={e=>set("meetingEndTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
+                <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>시작 시간</label><input type="time" step="600" value={f.meetingTime} onChange={e=>set("meetingTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
+                <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>종료 시간</label><input type="time" step="600" value={f.meetingEndTime} onChange={e=>set("meetingEndTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
               </div>
             )}
           </div>
@@ -431,7 +470,7 @@ const KanbanView=({projects,subGroups,tasks,selProjId,setSelProjId,selSubId,setS
         <div style={{flex:1,overflowY:"auto",padding:"8px 12px",WebkitOverflowScrolling:"touch"}}>
           {level===0&&<>
             {projects.length===0&&<div style={{color:"#CBD5E1",fontSize:13,textAlign:"center",padding:"50px 0",lineHeight:1.8}}>📁 대분류를 추가하세요<br/><span style={{fontSize:11}}>상단 추가 버튼을 눌러주세요</span></div>}
-            {projects.map(p=><ProjRow key={p.id} proj={p} subGroups={subGroups} tasks={tasks} selected={selProjId===p.id} onSelect={()=>{setSelProjId(p.id);setSelSubId(null);}} onEdit={()=>onProjModal(p)} onDelete={()=>onDelProj(p.id)}/>)}
+            {CAT_ORDER.map(cat=><CatSection key={cat} cat={cat} projects={projects} subGroups={subGroups} tasks={tasks} selProjId={selProjId} setSelProjId={setSelProjId} setSelSubId={setSelSubId} onProjModal={onProjModal} onDelProj={onDelProj}/>)}
           </>}
           {level===1&&<>
             {filtSubs.length===0&&<div style={{color:"#CBD5E1",fontSize:13,textAlign:"center",padding:"50px 0",lineHeight:1.8}}>중분류를 추가하세요<br/><span style={{fontSize:11}}>상단 추가 버튼을 눌러주세요</span></div>}
@@ -454,7 +493,7 @@ const KanbanView=({projects,subGroups,tasks,selProjId,setSelProjId,selSubId,setS
         {colHdr("대분류","#3B82F6",addBtn("#3B82F6",()=>onProjModal({}),"추가"))}
         <div style={{padding:"8px",overflowY:"auto",flex:1}}>
           {projects.length===0&&<div style={{color:"#CBD5E1",fontSize:12,textAlign:"center",padding:"24px 0",lineHeight:1.7}}>대분류를 추가하세요<br/><span style={{fontSize:10}}>예: 워치 만들기</span></div>}
-          {projects.map(p=><ProjRow key={p.id} proj={p} subGroups={subGroups} tasks={tasks} selected={selProjId===p.id} onSelect={()=>{const n=p.id===selProjId?null:p.id;setSelProjId(n);setSelSubId(null);}} onEdit={()=>onProjModal(p)} onDelete={()=>onDelProj(p.id)}/>)}
+          {CAT_ORDER.map(cat=><CatSection key={cat} cat={cat} projects={projects} subGroups={subGroups} tasks={tasks} selProjId={selProjId} setSelProjId={setSelProjId} setSelSubId={setSelSubId} onProjModal={onProjModal} onDelProj={onDelProj}/>)}
         </div>
       </div>
       <div style={{borderRight:"1px solid #E2E8F0",display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -654,8 +693,8 @@ const SchedModal=({sched,projects,onSave,onClose})=>{
             </div>
           )}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <div><label style={sLabel}>시작 시간</label><input type="time" value={f.time} onChange={e=>set("time",e.target.value)} style={sInput}/></div>
-            <div><label style={sLabel}>종료 시간</label><input type="time" value={f.endTime} onChange={e=>set("endTime",e.target.value)} style={sInput}/></div>
+            <div><label style={sLabel}>시작 시간</label><input type="time" step="600" value={f.time} onChange={e=>set("time",e.target.value)} style={sInput}/></div>
+            <div><label style={sLabel}>종료 시간</label><input type="time" step="600" value={f.endTime} onChange={e=>set("endTime",e.target.value)} style={sInput}/></div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div><label style={sLabel}>시작일</label><input type="date" value={f.startDate} onChange={e=>set("startDate",e.target.value)} style={sInput}/></div>

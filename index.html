@@ -100,9 +100,9 @@ const SCHED_LBL={daily:"일간",weekly:"주간",monthly:"월간",quarterly:"분�
 const WDAY_LBL=["월","화","수","목","금","토","일"];
 const MONTH_LBL=["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 
-const EMPTY_PROJ={id:"",name:"",category:"project",memo:"",vendorIds:[],stage:{proto:"pending",working_sample:"pending",tp:"pending",mp:"pending"},isTravel:false,travelStart:"",travelEnd:"",createdAt:""};
+const EMPTY_PROJ={id:"",name:"",category:"project",memo:"",vendorIds:[],stage:{proto:"pending",working_sample:"pending",tp:"pending",mp:"pending"},createdAt:""};
 const EMPTY_SUB= {id:"",projectId:"",name:"",memo:"",vendorIds:[],createdAt:""};
-const EMPTY_TASK={id:"",subGroupId:"",title:"",status:"todo",priority:"normal",deadline:"",memo:"",vendorIds:[],isMeeting:false,meetingTime:"",meetingEndTime:"",createdAt:""};
+const EMPTY_TASK={id:"",subGroupId:"",title:"",status:"todo",priority:"normal",deadline:"",memo:"",vendorIds:[],isMeeting:false,meetingTime:"",meetingEndTime:"",isTravel:false,travelStart:"",travelEnd:"",createdAt:""};
 const EMPTY_VENDOR={id:"",company:"",contact:"",phone:"",email:"",address:"",memo:"",createdAt:""};
 const EMPTY_SCHED={id:"",title:"",projectId:"",memo:"",repeatType:"weekly",repeatDays:[],repeatDate:1,startDate:"",endDate:"",time:"",endTime:"",createdAt:""};
 const EMPTY_DAILY={id:"",date:"",projId:"",projText:"",subId:"",subText:"",content:"",duration:"",createdAt:""};
@@ -173,7 +173,6 @@ const ProjRow=({proj,subGroups,tasks,selected,onSelect,onEdit,onDelete})=>{
       </div>
       {/* 단계 컴팩트 */}
       {proj.stage&&(proj.category==="project"||proj.category==="misc")&&<div style={{marginTop:5}}><StageCompact stage={proj.stage}/></div>}
-      {proj.isTravel&&proj.travelStart&&<div style={{color:"#7C3AED",fontSize:11,marginTop:4}}>✈️ {proj.travelStart}{proj.travelEnd&&` ~ ${proj.travelEnd}`}</div>}
       {all.length>0&&(
         <div style={{marginTop:5}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#94A3B8"}}>
@@ -256,6 +255,7 @@ const TaskRow=({task,onEdit,onDelete,onMove})=>{
             <span style={{color:"#1E293B",fontSize:13,fontWeight:500,lineHeight:1.4}}>{task.title}</span>
           </div>
           {task.meetingTime&&<div style={{color:"#7C3AED",fontSize:11,marginTop:2}}>🕐 {task.meetingTime}{task.meetingEndTime&&` ~ ${task.meetingEndTime}`}</div>}
+          {task.isTravel&&task.travelStart&&<div style={{color:"#7C3AED",fontSize:11,marginTop:2}}>✈️ {task.travelStart}{task.travelEnd&&` ~ ${task.travelEnd}`}</div>}
           {task.deadline&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,color:"#94A3B8",fontSize:10}}><ClockI size={9}/><span style={{fontFamily:"monospace"}}>{task.deadline}</span>{d!==null&&<span style={{color:ddayCl(d),fontWeight:d<=3?600:400}}>{fmtDday(d)}</span>}</div>}
           {task.memo&&<div style={{color:"#94A3B8",fontSize:11,marginTop:4,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{task.memo}</div>}
         </div>
@@ -322,22 +322,7 @@ const ProjModal=({proj,vendors=[],onSave,onClose})=>{
             <StageProg stage={f.stage} onToggle={toggleStage}/>
             <div style={{color:"#CBD5E1",fontSize:10,marginTop:6,textAlign:"center"}}>각 단계 클릭 → 대기 → 진행 → 완료 → 이슈</div>
           </div>)}
-          {/* 여행: 개인만 */}
-          {f.category==="personal"&&(
-          <div style={{background:"rgba(167,139,250,0.05)",border:"1px solid rgba(167,139,250,0.2)",borderRadius:8,padding:12}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:f.isTravel?12:0}}>
-              <button onClick={()=>set("isTravel",!f.isTravel)} style={{width:38,height:22,borderRadius:11,background:f.isTravel?"#7C3AED":"#D1D5DB",border:"none",position:"relative",cursor:"pointer",transition:"background 0.2s",flexShrink:0}}>
-                <span style={{position:"absolute",top:3,left:f.isTravel?19:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",display:"block"}}/>
-              </button>
-              <span style={{color:f.isTravel?"#7C3AED":"#64748B",fontSize:13,fontWeight:f.isTravel?600:400}}>✈️ 여행으로 등록</span>
-            </div>
-            {f.isTravel&&(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div><label style={sLabel}>출발일</label><input type="date" value={f.travelStart} onChange={e=>set("travelStart",e.target.value)} style={sInput}/></div>
-                <div><label style={sLabel}>귀국일</label><input type="date" value={f.travelEnd} onChange={e=>set("travelEnd",e.target.value)} style={sInput}/></div>
-              </div>
-            )}
-          </div>)}
+
           <div><label style={sLabel}>메모</label><textarea value={f.memo} onChange={e=>set("memo",e.target.value)} placeholder="메모를 입력하세요" rows={2} style={{...sInput,resize:"vertical",lineHeight:1.5}}/></div>
           <VendorSelect vendors={vendors} vendorIds={f.vendorIds||[]} onChange={v=>set("vendorIds",v)}/>
         </div>
@@ -404,6 +389,21 @@ const TaskModal=({task,projName,subName,vendors=[],onSave,onClose})=>{
               <div style={{display:"flex",gap:10,marginTop:10}}>
                 <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>시작 시간</label><input type="time" step="600" value={f.meetingTime} onChange={e=>set("meetingTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
                 <div style={{flex:1}}><label style={{...sLabel,marginBottom:4}}>종료 시간</label><input type="time" step="600" value={f.meetingEndTime} onChange={e=>set("meetingEndTime",e.target.value)} style={{...sInput,fontSize:12}}/></div>
+              </div>
+            )}
+          </div>
+          {/* 여행 등록 */}
+          <div style={{background:"rgba(167,139,250,0.04)",border:"1px solid rgba(167,139,250,0.18)",borderRadius:8,padding:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:f.isTravel?12:0}}>
+              <button onClick={()=>set("isTravel",!f.isTravel)} style={{width:38,height:22,borderRadius:11,background:f.isTravel?"#7C3AED":"#D1D5DB",border:"none",position:"relative",cursor:"pointer",transition:"background 0.2s",flexShrink:0}}>
+                <span style={{position:"absolute",top:3,left:f.isTravel?19:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s",display:"block"}}/>
+              </button>
+              <span style={{color:f.isTravel?"#7C3AED":"#64748B",fontSize:13,fontWeight:f.isTravel?600:400}}>✈️ 여행으로 등록</span>
+            </div>
+            {f.isTravel&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div><label style={sLabel}>출발일</label><input type="date" value={f.travelStart} onChange={e=>set("travelStart",e.target.value)} style={sInput}/></div>
+                <div><label style={sLabel}>귀국일</label><input type="date" value={f.travelEnd} onChange={e=>set("travelEnd",e.target.value)} style={sInput}/></div>
               </div>
             )}
           </div>

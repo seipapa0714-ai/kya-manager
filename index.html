@@ -252,7 +252,7 @@ const ProjModal=({proj,vendors=[],onSave,onClose})=>{
   const save=()=>{if(!f.name.trim())return;onSave({...f,id:f.id||uid(),createdAt:f.createdAt||new Date().toISOString()});};
   return(
     <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:isMobile?14:22,width:"100%",maxWidth:520,maxHeight:isMobile?"100vh":"92vh",overflowY:"auto"}}>
+      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:22,width:"100%",maxWidth:520,maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
           <span style={{color:"#0F172A",fontSize:15,fontWeight:700}}>{f.id?"대분류 수정":"대분류 추가"}</span>
           <button onClick={onClose} style={{...sIBtn,color:"#94A3B8"}}><X size={18}/></button>
@@ -293,7 +293,7 @@ const SubModal=({sg,parentName,vendors=[],onSave,onClose})=>{
   const save=()=>{if(!f.name.trim())return;onSave({...f,id:f.id||uid(),createdAt:f.createdAt||new Date().toISOString()});};
   return(
     <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:isMobile?14:22,width:"100%",maxWidth:440}}>
+      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:22,width:"100%",maxWidth:440}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <span style={{color:"#0F172A",fontSize:15,fontWeight:700}}>{f.id?"중분류 수정":"중분류 추가"}</span>
           <button onClick={onClose} style={{...sIBtn,color:"#94A3B8"}}><X size={18}/></button>
@@ -595,7 +595,7 @@ const SchedModal=({sched,projects,onSave,onClose})=>{
   const showDate=f.repeatType==="monthly";
   return(
     <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:isMobile?14:22,width:"100%",maxWidth:480,maxHeight:isMobile?"100vh":"92vh",overflowY:"auto"}}>
+      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:22,width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
           <span style={{color:"#0F172A",fontSize:15,fontWeight:700}}>{f.id?"정기 일정 수정":"정기 일정 추가"}</span>
           <button onClick={onClose} style={{...sIBtn,color:"#94A3B8"}}><X size={18}/></button>
@@ -904,7 +904,7 @@ const VendorModal=({vendor,onSave,onClose})=>{
   const save=()=>{if(!f.company.trim())return;onSave({...f,id:f.id||uid(),createdAt:f.createdAt||new Date().toISOString()});};
   return(
     <div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:isMobile?14:22,width:"100%",maxWidth:500,maxHeight:isMobile?"100vh":"92vh",overflowY:"auto"}}>
+      <div style={{background:"#FFFFFF",border:"1px solid #E2E8F0",borderRadius:12,padding:22,width:"100%",maxWidth:500,maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
           <span style={{color:"#0F172A",fontSize:15,fontWeight:700}}>{f.id?"협력업체 수정":"협력업체 추가"}</span>
           <button onClick={onClose} style={{...sIBtn,color:"#94A3B8"}}><X size={18}/></button>

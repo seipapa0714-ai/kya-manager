@@ -109,13 +109,14 @@ const EMPTY_DAILY={id:"",date:"",projId:"",projText:"",subId:"",subText:"",conte
 
 /* ── 유틸 ── */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
-const todayStr=()=>new Date().toISOString().slice(0,10);
+const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const todayStr=()=>fmtD(new Date());
 const toDate=s=>new Date(s+"T00:00:00");
 const getDday=dl=>{if(!dl)return null;const n=new Date();n.setHours(0,0,0,0);return Math.round((toDate(dl)-n)/86400000);};
 const fmtDday=d=>d===null?"":d===0?"D-day":d>0?`D-${d}`:`D+${Math.abs(d)}`;
 const ddayCl=d=>{if(d===null)return"#94A3B8";if(d<0||d===0)return"#F87171";if(d<=3)return"#FB923C";if(d<=7)return"#FBBF24";return"#94A3B8";};
-const getWeek=base=>{const d=new Date(base),dow=d.getDay(),m=new Date(d);m.setDate(d.getDate()-(dow===0?6:dow-1));return Array.from({length:7},(_,i)=>{const x=new Date(m);x.setDate(m.getDate()+i);return x.toISOString().slice(0,10);});};
-const getMonthGrid=(y,mo)=>{const f=new Date(y,mo,1),l=new Date(y,mo+1,0),pre=(f.getDay()+6)%7,arr=[];for(let i=0;i<pre;i++)arr.push(null);for(let i=1;i<=l.getDate();i++)arr.push(new Date(y,mo,i).toISOString().slice(0,10));while(arr.length%7)arr.push(null);return arr;};
+const getWeek=base=>{const d=new Date(base),dow=d.getDay(),m=new Date(d);m.setDate(d.getDate()-(dow===0?6:dow-1));return Array.from({length:7},(_,i)=>{const x=new Date(m);x.setDate(m.getDate()+i);return fmtD(x);});};
+const getMonthGrid=(y,mo)=>{const f=new Date(y,mo,1),l=new Date(y,mo+1,0),pre=(f.getDay()+6)%7,arr=[];for(let i=0;i<pre;i++)arr.push(null);for(let i=1;i<=l.getDate();i++)arr.push(fmtD(new Date(y,mo,i)));while(arr.length%7)arr.push(null);return arr;};
 const repeatDesc=s=>{if(s.repeatType==="once")return s.startDate||"";if(s.repeatType==="daily")return"매일";if(s.repeatType==="monthly")return`매월 ${s.repeatDate}일`;if(s.repeatType==="yearly")return`매년`;const days=(s.repeatDays||[]).map(i=>DAYS_KR[i]).join("/");const prefix=s.repeatType==="biweekly"?"격주 ":"매주 ";return days?prefix+days:prefix+"?";};
 
 /* ── 공통 스타일 ── */
@@ -579,7 +580,7 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
   const getProj=t=>{const sg=subGroups.find(s=>s.id===t.subGroupId);return sg?projects.find(p=>p.id===sg.projectId):null;};
   const getCatColor=t=>{const p=getProj(t);return p?(CATS[p.category]||CATS.project).color:"#60A5FA";};
   const DailyR=()=>{
-    const ds=cur.toISOString().slice(0,10),dt=byDate(ds);
+    const ds=fmtD(cur),dt=byDate(ds);
     const inP=tasks.filter(t=>t.status==="inprogress"&&t.deadline!==ds);
     const ov=tasks.filter(t=>t.status!=="done"&&t.deadline&&getDday(t.deadline)<0&&t.deadline!==ds);
     return(<div style={{padding:"0 14px"}}>
@@ -901,7 +902,7 @@ const DailyView=({dailies,onSave,onDelete,projs,subs,isMobile=false})=>{
   const kd=["일","월","화","수","목","금","토"];
   const curDt=toDate(curDate);
   const dayLabel=`${curDt.getFullYear()}년 ${curDt.getMonth()+1}월 ${curDt.getDate()}일 (${kd[curDt.getDay()]})`;
-  const navDay=dir=>{const d=new Date(curDate+"T00:00:00");d.setDate(d.getDate()+dir);const nd=d.toISOString().slice(0,10);setCurDate(nd);if(!weekDays.includes(nd))setWeekBase(d);};
+  const navDay=dir=>{const d=new Date(curDate+"T00:00:00");d.setDate(d.getDate()+dir);const nd=fmtD(d);setCurDate(nd);if(!weekDays.includes(nd))setWeekBase(d);};
   const navWeek=dir=>{const d=new Date(weekBase);d.setDate(d.getDate()+dir*7);setWeekBase(d);};
   const goToday=()=>{setCurDate(todayStr());setWeekBase(new Date());};
   const handleSave=entry=>{onSave({...entry,date:curDate});setAdding(false);setEditId(null);};

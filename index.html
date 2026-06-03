@@ -97,7 +97,7 @@ const REPEAT_LBL={once:"일회성",daily:"매일",weekly:"매주",biweekly:"격�
 const DAYS_KR=["월","화","수","목","금","토","일"];
 const SCHED_TABS=["daily","weekly","monthly","quarterly"];
 const SCHED_LBL={daily:"일간",weekly:"주간",monthly:"월간",quarterly:"분기별"};
-const WDAY_LBL=["월","화","수","목","금","토","일"];
+const WDAY_LBL=["일","월","화","수","목","금","토"];
 const MONTH_LBL=["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 
 const EMPTY_PROJ={id:"",name:"",category:"project",memo:"",vendorIds:[],stage:{proto:"pending",working_sample:"pending",tp:"pending",mp:"pending"},createdAt:""};
@@ -115,8 +115,8 @@ const toDate=s=>new Date(s+"T00:00:00");
 const getDday=dl=>{if(!dl)return null;const n=new Date();n.setHours(0,0,0,0);return Math.round((toDate(dl)-n)/86400000);};
 const fmtDday=d=>d===null?"":d===0?"D-day":d>0?`D-${d}`:`D+${Math.abs(d)}`;
 const ddayCl=d=>{if(d===null)return"#94A3B8";if(d<0||d===0)return"#F87171";if(d<=3)return"#FB923C";if(d<=7)return"#FBBF24";return"#94A3B8";};
-const getWeek=base=>{const d=new Date(base),dow=d.getDay(),m=new Date(d);m.setDate(d.getDate()-(dow===0?6:dow-1));return Array.from({length:7},(_,i)=>{const x=new Date(m);x.setDate(m.getDate()+i);return fmtD(x);});};
-const getMonthGrid=(y,mo)=>{const f=new Date(y,mo,1),l=new Date(y,mo+1,0),pre=(f.getDay()+6)%7,arr=[];for(let i=0;i<pre;i++)arr.push(null);for(let i=1;i<=l.getDate();i++)arr.push(fmtD(new Date(y,mo,i)));while(arr.length%7)arr.push(null);return arr;};
+const getWeek=base=>{const d=new Date(base),dow=d.getDay(),m=new Date(d);m.setDate(d.getDate()-dow);return Array.from({length:7},(_,i)=>{const x=new Date(m);x.setDate(m.getDate()+i);return fmtD(x);});};
+const getMonthGrid=(y,mo)=>{const f=new Date(y,mo,1),l=new Date(y,mo+1,0),pre=f.getDay(),arr=[];for(let i=0;i<pre;i++)arr.push(null);for(let i=1;i<=l.getDate();i++)arr.push(fmtD(new Date(y,mo,i)));while(arr.length%7)arr.push(null);return arr;};
 const repeatDesc=s=>{if(s.repeatType==="once")return s.startDate||"";if(s.repeatType==="daily")return"매일";if(s.repeatType==="monthly")return`매월 ${s.repeatDate}일`;if(s.repeatType==="yearly")return`매년`;const days=(s.repeatDays||[]).map(i=>DAYS_KR[i]).join("/");const prefix=s.repeatType==="biweekly"?"격주 ":"매주 ";return days?prefix+days:prefix+"?";};
 
 /* ── 공통 스타일 ── */
@@ -570,6 +570,7 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
   const [cur,setCur]=useState(new Date());
   const nav=dir=>{const d=new Date(cur);if(tab==="daily")d.setDate(d.getDate()+dir);else if(tab==="weekly")d.setDate(d.getDate()+dir*7);else if(tab==="monthly")d.setMonth(d.getMonth()+dir);else d.setMonth(d.getMonth()+dir*3);setCur(d);};
   const byDate=ds=>tasks.filter(t=>t.deadline===ds);
+  const travelByDate=ds=>tasks.filter(t=>t.isTravel&&t.travelStart&&t.travelStart<=ds&&(!t.travelEnd||t.travelEnd>=ds));
   const kd=["일","월","화","수","목","금","토"];
   const hdrLbl=()=>{
     if(tab==="daily")return`${cur.getFullYear()}년 ${cur.getMonth()+1}월 ${cur.getDate()}일 (${kd[cur.getDay()]})`;
@@ -593,13 +594,13 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
   const WeeklyR=()=>{
     const days=getWeek(cur),td=todayStr();
     return(<div style={{padding:"0 14px",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:7}}>
-      {days.map((ds,i)=>{const dt=toDate(ds),isT=ds===td,isW=i>=5,items=byDate(ds);return(
+      {days.map((ds,i)=>{const dt=toDate(ds),isT=ds===td,isW=i===0||i===6,items=byDate(ds),trvs=travelByDate(ds);return(
         <div key={ds} style={{background:isT?"rgba(59,130,246,0.05)":"#FFFFFF",border:isT?"1px solid rgba(59,130,246,0.2)":"1px solid #E2E8F0",borderRadius:8,overflow:"hidden",minHeight:130}}>
           <div style={{padding:"7px 6px",textAlign:"center",borderBottom:"1px solid #E2E8F0",background:isT?"rgba(59,130,246,0.08)":"#F8FAFC"}}>
             <div style={{color:isW?"#F87171":"#94A3B8",fontSize:11,fontWeight:600}}>{WDAY_LBL[i]}</div>
             <div style={{color:isT?"#2563EB":isW?"#F87171":"#334155",fontSize:17,fontWeight:700,fontFamily:"monospace"}}>{dt.getDate()}</div>
           </div>
-          <div style={{padding:5}}>{items.map(t=><div key={t.id} onClick={()=>onEdit(t)} style={{background:`${getCatColor(t)}15`,border:`1px solid ${getCatColor(t)}30`,color:getCatColor(t),fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.isMeeting?"📅 ":""}{t.title}</div>)}</div>
+          <div style={{padding:5}}>{trvs.map(t=><div key={"tr"+t.id} onClick={()=>onEdit(t)} style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)",color:"#7C3AED",fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>✈️ {t.title}</div>)}{items.map(t=><div key={t.id} onClick={()=>onEdit(t)} style={{background:`${getCatColor(t)}15`,border:`1px solid ${getCatColor(t)}30`,color:getCatColor(t),fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.isMeeting?"📅 ":""}{t.title}</div>)}</div>
         </div>);})}
     </div>);
   };
@@ -607,15 +608,15 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
     const y=cur.getFullYear(),m=cur.getMonth(),grid=getMonthGrid(y,m),td=todayStr();
     return(<div style={{padding:"0 14px"}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:3}}>
-        {WDAY_LBL.map((l,i)=><div key={l} style={{textAlign:"center",color:i>=5?"#F87171":"#94A3B8",fontSize:11,fontWeight:600,padding:"3px 0"}}>{l}</div>)}
+        {WDAY_LBL.map((l,i)=><div key={l} style={{textAlign:"center",color:(i===0||i===6)?"#F87171":"#94A3B8",fontSize:11,fontWeight:600,padding:"3px 0"}}>{l}</div>)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
         {grid.map((ds,i)=>{
           if(!ds)return<div key={i} style={{minHeight:62,background:"rgba(0,0,0,0.01)",borderRadius:5}}/>;
-          const dt=toDate(ds),isT=ds===td,isW=i%7>=5,items=byDate(ds);
+          const dt=toDate(ds),isT=ds===td,isW=i%7===0||i%7===6,items=byDate(ds),trvs=travelByDate(ds);
           return(<div key={ds} style={{background:isT?"rgba(59,130,246,0.05)":"#FFFFFF",border:isT?"1px solid rgba(59,130,246,0.2)":"1px solid #E2E8F0",borderRadius:5,padding:5,minHeight:62}}>
             <div style={{color:isT?"#2563EB":isW?"#F87171":"#94A3B8",fontSize:12,fontWeight:isT?700:400,fontFamily:"monospace",marginBottom:3}}>{dt.getDate()}</div>
-            {items.slice(0,3).map(t=><div key={t.id} title={t.title} style={{height:4,background:getCatColor(t),borderRadius:2,marginBottom:2,opacity:0.7}}/>)}
+            {trvs.map(t=>{const isS=t.travelStart===ds,isE=!t.travelEnd||t.travelEnd===ds;return(<div key={"tr"+t.id} title={`✈️ ${t.title}`} style={{height:15,background:"rgba(124,58,237,0.75)",borderRadius:isS&&isE?"3px":isS?"3px 0 0 3px":isE?"0 3px 3px 0":"0",marginBottom:2,marginLeft:isS?0:-3,marginRight:isE?0:-3,display:"flex",alignItems:"center",paddingLeft:isS?4:0,overflow:"hidden"}}>{isS&&<span style={{color:"#fff",fontSize:9,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>✈️ {t.title}</span>}</div>);})}{items.slice(0,2).map(t=><div key={t.id} title={t.title} style={{height:4,background:getCatColor(t),borderRadius:2,marginBottom:2,opacity:0.7}}/>)}
             {items.length>3&&<div style={{color:"#94A3B8",fontSize:10}}>+{items.length-3}</div>}
           </div>);
         })}
@@ -943,7 +944,7 @@ const DailyView=({dailies,onSave,onDelete,projs,subs,isMobile=false})=>{
         </div>
         {weekDays.map((day,i)=>{
           const entries=dailies.filter(d=>d.date===day);
-          const dt=toDate(day),isToday=day===todayStr(),isCur=day===curDate,isW=i>=5;
+          const dt=toDate(day),isToday=day===todayStr(),isCur=day===curDate,isW=i===0||i===6;
           return(
             <div key={day} onClick={()=>{setCurDate(day);}} style={{background:isCur?"rgba(59,130,246,0.06)":"rgba(0,0,0,0.01)",border:`1px solid ${isCur?"rgba(59,130,246,0.2)":"#E2E8F0"}`,borderRadius:8,padding:"9px 11px",marginBottom:5,cursor:"pointer",transition:"all 0.12s"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:entries.length>0?5:0}}>

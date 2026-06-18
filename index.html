@@ -47,7 +47,7 @@ button { touch-action: manipulation; }
 })();
 </script>
 </head><body><div id="root"></div>
-<script type="text/babel">
+<script type="text/plain" id="app-source">
 const {useState,useEffect,useRef}=React;
 const FB_URL="https://yapn-cd0d7-default-rtdb.firebaseio.com/data.json";
 
@@ -1263,4 +1263,12 @@ function App(){
   );
 }
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script></body></html>
+</script>
+<script>
+(function(){
+  var src=document.getElementById("app-source").textContent;
+  var out=Babel.transform(src,{presets:["react"]}).code;
+  (new Function(out))();
+})();
+</script>
+</body></html>

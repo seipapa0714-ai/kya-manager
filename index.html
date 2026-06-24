@@ -1131,24 +1131,36 @@ function App(){
 
   useEffect(()=>{
     (async()=>{
+      // ① 먼저 localStorage에서 즉시 로딩
+      const ls={};
+      try{
+        const p=localStorage.getItem("gd_projs_v1"),s=localStorage.getItem("gd_subs_v1"),
+              t=localStorage.getItem("gd_tasks_v3"),v=localStorage.getItem("gd_vendors_v1"),
+              sc=localStorage.getItem("gd_schedules_v1"),dl=localStorage.getItem("gd_dailies_v1");
+        if(p){const d=JSON.parse(p);setProjs(d);ls.projs=d;}
+        if(s){const d=JSON.parse(s);setSubs(d);ls.subs=d;}
+        if(t){const d=JSON.parse(t);setTasks(d);ls.tasks=d;}
+        if(v){const d=JSON.parse(v);setVendors(d);ls.vendors=d;}
+        if(sc){const d=JSON.parse(sc);setSchedules(d);ls.schedules=d;}
+        if(dl){const d=JSON.parse(dl);setDailies(d);ls.dailies=d;}
+      }catch(le){}
+      // ② Firebase 로딩 (있으면 덮어씀, 없으면 localStorage를 Firebase에 업로드)
       try{
         const res=await fetch(FB_URL);
         const fb=await res.json();
-        if(fb&&typeof fb==="object"){
+        if(fb&&typeof fb==="object"&&(Array.isArray(fb.projs)||Array.isArray(fb.subs)||Array.isArray(fb.tasks))){
           if(Array.isArray(fb.projs))setProjs(fb.projs);
           if(Array.isArray(fb.subs))setSubs(fb.subs);
           if(Array.isArray(fb.tasks))setTasks(fb.tasks);
           if(Array.isArray(fb.vendors))setVendors(fb.vendors);
           if(Array.isArray(fb.schedules))setSchedules(fb.schedules);
           if(Array.isArray(fb.dailies))setDailies(fb.dailies);
+        }else if(Object.keys(ls).length>0){
+          // Firebase 비어있는데 localStorage에 데이터 있으면 Firebase에 업로드
+          await fetch(FB_URL,{method:"PUT",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({projs:ls.projs||[],subs:ls.subs||[],tasks:ls.tasks||[],vendors:ls.vendors||[],schedules:ls.schedules||[],dailies:ls.dailies||[]})});
         }
-      }catch(e){
-        // 오프라인 시 localStorage 폴백
-        try{
-          const p=localStorage.getItem("gd_projs_v1"),s=localStorage.getItem("gd_subs_v1"),t=localStorage.getItem("gd_tasks_v3"),v=localStorage.getItem("gd_vendors_v1"),sc=localStorage.getItem("gd_schedules_v1"),dl=localStorage.getItem("gd_dailies_v1");
-          if(p)setProjs(JSON.parse(p));if(s)setSubs(JSON.parse(s));if(t)setTasks(JSON.parse(t));if(v)setVendors(JSON.parse(v));if(sc)setSchedules(JSON.parse(sc));if(dl)setDailies(JSON.parse(dl));
-        }catch(e2){}
-      }
+      }catch(e){}
       setLoading(false);
     })();
   },[]);

@@ -105,7 +105,9 @@ const EMPTY_SUB= {id:"",projectId:"",name:"",memo:"",vendorIds:[],createdAt:""};
 const EMPTY_TASK={id:"",subGroupId:"",title:"",status:"todo",priority:"normal",deadline:"",memo:"",vendorIds:[],isMeeting:false,meetingTime:"",meetingEndTime:"",isTravel:false,travelStart:"",travelEnd:"",createdAt:""};
 const EMPTY_VENDOR={id:"",company:"",contact:"",phone:"",email:"",address:"",memo:"",createdAt:""};
 const EMPTY_SCHED={id:"",title:"",projectId:"",memo:"",repeatType:"weekly",repeatDays:[],repeatDate:1,startDate:"",endDate:"",time:"",endTime:"",createdAt:""};
-const EMPTY_DAILY={id:"",date:"",projId:"",projText:"",subId:"",subText:"",content:"",duration:"",createdAt:""};
+const EMPTY_DAILY={id:"",date:"",projId:"",projText:"",subId:"",subText:"",content:"",duration:"",progress:0,createdAt:""};
+const PROG_COL=p=>p>=100?"#10B981":p>=70?"#3B82F6":p>=30?"#F59E0B":"#F87171";
+const PROG_LBL=p=>p>=100?"✅ 완료":p>=70?"🔵 완료 임박":p>=30?"🟡 진행중":p>0?"🟠 부분진행":"⬜ 시작 전";
 
 /* ── 유틸 ── */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -464,7 +466,7 @@ const TaskModal=({task,projName,subName,vendors=[],allSubs=[],allProjs=[],onSave
 /* ── 칸반 뷰 ── */
 /* ── 칸반 내 일지 폼 ── */
 const KanbanDailyForm=({init,projId,subId,projects,subGroups,onSave,onCancel})=>{
-  const [f,setF]=useState({date:init?.date||todayStr(),content:init?.content||"",duration:init?.duration||""});
+  const [f,setF]=useState({date:init?.date||todayStr(),content:init?.content||"",duration:init?.duration||"",progress:init?.progress||0});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const proj=projects.find(p=>p.id===projId);
   const sub=subGroups.find(s=>s.id===subId);
@@ -480,6 +482,17 @@ const KanbanDailyForm=({init,projId,subId,projects,subGroups,onSave,onCancel})=>
         <input value={f.duration} onChange={e=>set("duration",e.target.value)} placeholder="⏱ 소요시간" style={{...sInput,fontSize:11,padding:"4px 7px",flex:1}}/>
       </div>
       <textarea value={f.content} onChange={e=>set("content",e.target.value)} placeholder="업무 내용을 입력하세요..." rows={2} style={{...sInput,resize:"none",fontSize:11,lineHeight:1.5,marginBottom:6}}/>
+      <div style={{marginBottom:7}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <span style={{fontSize:10,color:"#64748B",fontWeight:600}}>진행률</span>
+          <span style={{fontSize:11,fontWeight:700,color:PROG_COL(f.progress)}}>{PROG_LBL(f.progress)}</span>
+          <span style={{fontSize:11,color:"#94A3B8",marginLeft:"auto"}}>{f.progress}%</span>
+        </div>
+        <input type="range" min="0" max="100" step="5" value={f.progress} onChange={e=>set("progress",Number(e.target.value))} style={{width:"100%",accentColor:PROG_COL(f.progress)}}/>
+        <div style={{display:"flex",gap:4,marginTop:4}}>
+          {[0,10,25,50,75,100].map(v=><button key={v} onClick={()=>set("progress",v)} style={{flex:1,background:f.progress===v?PROG_COL(v)+"22":"rgba(0,0,0,0.03)",border:`1px solid ${f.progress===v?PROG_COL(v)+"60":"#E2E8F0"}`,color:f.progress===v?PROG_COL(v):"#64748B",fontSize:10,padding:"2px 0",borderRadius:4,cursor:"pointer",fontWeight:f.progress===v?700:400}}>{v===0?"시작전":v===100?"완료":v+"%"}</button>)}
+        </div>
+      </div>
       <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
         <button onClick={onCancel} style={{background:"rgba(0,0,0,0.04)",border:"1px solid #E2E8F0",color:"#64748B",padding:"4px 11px",borderRadius:6,cursor:"pointer",fontSize:11}}>취소</button>
         <button onClick={handleSave} style={{background:ok?"linear-gradient(135deg,#6366F1,#4F46E5)":"#E2E8F0",border:"none",color:ok?"#fff":"#94A3B8",padding:"4px 14px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:600}}>저장</button>
@@ -491,6 +504,9 @@ const KanbanDailyForm=({init,projId,subId,projects,subGroups,onSave,onCancel})=>
 const KanbanView=({projects,subGroups,tasks,selProjId,setSelProjId,selSubId,setSelSubId,onProjModal,onSubModal,onTaskModal,onDelProj,onDelSub,onDelTask,onMoveTask,isMobile=false,dailies=[],projs=[],onSaveDaily,onDelDaily})=>{
   const [addingDaily,setAddingDaily]=useState(false);
   const [editDailyId,setEditDailyId]=useState(null);
+  const [addingDailyAll,setAddingDailyAll]=useState(false);
+  const [editDailyAllId,setEditDailyAllId]=useState(null);
+  const [dailyAllFilter,setDailyAllFilter]=useState("all");
   const DKRD=["일","월","화","수","목","금","토"];
   const fmtDL=ds=>{const dt=toDate(ds);return`${dt.getMonth()+1}/${dt.getDate()}(${DKRD[dt.getDay()]})`;};
   const handleDailySave=e=>{if(onSaveDaily)onSaveDaily(e);setAddingDaily(false);setEditDailyId(null);};
@@ -546,7 +562,7 @@ const KanbanView=({projects,subGroups,tasks,selProjId,setSelProjId,selSubId,setS
     );
   }
   return(
-    <div style={{display:"grid",gridTemplateColumns:"240px 220px 1fr",height:"calc(100vh - 116px)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+    <div style={{display:"grid",gridTemplateColumns:"220px 200px 1fr 280px",height:"calc(100vh - 116px)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{borderRight:"1px solid #E2E8F0",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {colHdr("대분류","#3B82F6",addBtn("#3B82F6",()=>onProjModal({}),"추가"))}
         <div style={{padding:"8px",overflowY:"auto",flex:1}}>
@@ -606,6 +622,80 @@ const KanbanView=({projects,subGroups,tasks,selProjId,setSelProjId,selSubId,setS
           ))}
         </div>
       </div>
+      {/* ── 4번째 컬럼: 전체 데일리 ── */}
+      {(()=>{
+        const td=todayStr();
+        const ws=getWeek(new Date())[0];
+        const allDailies=[...dailies].filter(d=>{
+          if(dailyAllFilter==="today")return d.date===td;
+          if(dailyAllFilter==="week")return d.date>=ws&&d.date<=td;
+          return true;
+        }).sort((a,b)=>b.date.localeCompare(a.date));
+        // 날짜별로 그룹핑
+        const byDate={};
+        allDailies.forEach(d=>{if(!byDate[d.date])byDate[d.date]=[];byDate[d.date].push(d);});
+        const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+        return(
+          <div style={{borderLeft:"2px solid #E2E8F0",display:"flex",flexDirection:"column",overflow:"hidden",background:"#FAFBFF"}}>
+            {/* 헤더 */}
+            <div style={{padding:"10px 12px 8px",borderBottom:"1px solid #E2E8F0",background:"#F8FAFC",flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                <span style={{color:"#F59E0B",fontSize:11,fontWeight:700,letterSpacing:"0.8px",textTransform:"uppercase"}}>📋 데일리</span>
+                <button onClick={()=>{setEditDailyAllId(null);setAddingDailyAll(a=>!a);}} style={{background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",color:"#D97706",fontSize:10,padding:"2px 8px",borderRadius:4,cursor:"pointer",fontWeight:700}}>+ 추가</button>
+              </div>
+              <div style={{display:"flex",gap:4}}>
+                {["all","today","week"].map((f,i)=>{const l=["전체","오늘","이번주"][i];return(<button key={f} onClick={()=>setDailyAllFilter(f)} style={{flex:1,background:dailyAllFilter===f?"#F59E0B":"rgba(0,0,0,0.03)",border:`1px solid ${dailyAllFilter===f?"#F59E0B":"#E2E8F0"}`,color:dailyAllFilter===f?"#fff":"#64748B",fontSize:10,padding:"3px 0",borderRadius:5,cursor:"pointer",fontWeight:dailyAllFilter===f?700:400}}>{l}</button>);})}
+              </div>
+            </div>
+            {/* 본문 */}
+            <div style={{overflowY:"auto",flex:1,padding:"8px 10px"}}>
+              {addingDailyAll&&<KanbanDailyForm projId={selProjId||""} subId={selSubId||""} projects={projects} subGroups={subGroups} onSave={e=>{if(onSaveDaily)onSaveDaily(e);setAddingDailyAll(false);}} onCancel={()=>setAddingDailyAll(false)}/>}
+              {dates.length===0&&!addingDailyAll&&<div style={{color:"#CBD5E1",fontSize:12,textAlign:"center",padding:"32px 0",lineHeight:1.8}}>📋 기록된 일지가 없어요<br/><span style={{fontSize:10}}>+ 추가로 일지를 작성하세요</span></div>}
+              {dates.map(date=>{
+                const dt=toDate(date);
+                const dkrd=["일","월","화","수","목","금","토"];
+                const dateStr=`${dt.getMonth()+1}/${dt.getDate()}(${dkrd[dt.getDay()]})`;
+                const entries=byDate[date];
+                return(
+                  <div key={date} style={{marginBottom:12}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#94A3B8",marginBottom:5,paddingLeft:2}}>{dateStr}</div>
+                    {entries.map(d=>{
+                      const proj=projects.find(p=>p.id===d.projId);
+                      const sub=subGroups.find(s=>s.id===d.subId);
+                      const pc=PROG_COL(d.progress||0);
+                      return editDailyAllId===d.id?(
+                        <KanbanDailyForm key={d.id} init={d} projId={d.projId} subId={d.subId} projects={projects} subGroups={subGroups} onSave={e=>{if(onSaveDaily)onSaveDaily(e);setEditDailyAllId(null);}} onCancel={()=>setEditDailyAllId(null)}/>
+                      ):(
+                        <div key={d.id} style={{background:"#fff",border:"1px solid #E8E4FF",borderLeft:`3px solid ${pc}`,borderRadius:8,padding:"8px 10px",marginBottom:6}}>
+                          {/* 프로젝트 > 중분류 */}
+                          <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+                            {proj&&<span style={{fontSize:10,fontWeight:700,color:(CATS[proj.category]||CATS.project).color,background:(CATS[proj.category]||CATS.project).bg,padding:"1px 5px",borderRadius:3,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj.name}</span>}
+                            {sub&&<span style={{fontSize:10,color:"#94A3B8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>/ {sub.name}</span>}
+                            <div style={{display:"flex",gap:2,marginLeft:"auto",flexShrink:0}}>
+                              <button onClick={()=>{setAddingDailyAll(false);setEditDailyAllId(d.id);}} style={{...sIBtn,padding:3,color:"#6366F1"}}><Edit2 size={11}/></button>
+                              <button onClick={()=>{if(onDelDaily)onDelDaily(d.id);}} style={{...sIBtn,padding:3,color:"#F87171"}}><Trash2 size={11}/></button>
+                            </div>
+                          </div>
+                          {/* 진행률 바 */}
+                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                            <div style={{flex:1,height:5,background:"#F1F5F9",borderRadius:3,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${d.progress||0}%`,background:pc,borderRadius:3,transition:"width 0.3s"}}/>
+                            </div>
+                            <span style={{fontSize:10,fontWeight:700,color:pc,whiteSpace:"nowrap"}}>{d.progress||0}%</span>
+                          </div>
+                          {/* 내용 */}
+                          <div style={{fontSize:11,color:"#334155",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.content}</div>
+                          {d.duration&&<div style={{fontSize:10,color:"#94A3B8",marginTop:3}}>⏱ {d.duration}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

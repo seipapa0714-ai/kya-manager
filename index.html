@@ -778,12 +778,13 @@ const SchedItem=({task,subGroups,projects,onEdit})=>{
     </div>
   );
 };
-const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
+const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})=>{
   const [tab,setTab]=useState("daily");
   const [cur,setCur]=useState(new Date());
   const nav=dir=>{const d=new Date(cur);if(tab==="daily")d.setDate(d.getDate()+dir);else if(tab==="weekly")d.setDate(d.getDate()+dir*7);else if(tab==="monthly")d.setMonth(d.getMonth()+dir);else d.setMonth(d.getMonth()+dir*3);setCur(d);};
   const byDate=ds=>tasks.filter(t=>t.deadline===ds);
   const travelByDate=ds=>tasks.filter(t=>t.isTravel&&t.travelStart&&t.travelStart<=ds&&(!t.travelEnd||t.travelEnd>=ds));
+  const dailyByDate=ds=>dailies.filter(d=>d.date===ds);
   const kd=["일","월","화","수","목","금","토"];
   const hdrLbl=()=>{
     if(tab==="daily")return`${cur.getFullYear()}년 ${cur.getMonth()+1}월 ${cur.getDate()}일 (${kd[cur.getDay()]})`;
@@ -793,15 +794,39 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
   };
   const getProj=t=>{const sg=subGroups.find(s=>s.id===t.subGroupId);return sg?projects.find(p=>p.id===sg.projectId):null;};
   const getCatColor=t=>{const p=getProj(t);return p?(CATS[p.category]||CATS.project).color:"#60A5FA";};
-  const DailyR=()=>{
-    const ds=fmtD(cur),dt=byDate(ds);
+  const DailySchedCard=({d})=>{
+    const proj=projects.find(p=>p.id===d.projId);
+    const sub=subGroups.find(s=>s.id===d.subId);
+    const pc=PROG_COL(d.progress||0);
+    return(
+      <div style={{background:"rgba(99,102,241,0.04)",border:"1px solid rgba(99,102,241,0.2)",borderLeft:`3px solid ${pc}`,borderRadius:8,padding:"8px 12px",marginBottom:6}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#6366F1"}}>📝</span>
+          {proj&&<span style={{fontSize:11,fontWeight:700,color:(CATS[proj.category]||CATS.project).color,background:(CATS[proj.category]||CATS.project).bg,padding:"1px 6px",borderRadius:4}}>{proj.name}</span>}
+          {sub&&<span style={{color:"#94A3B8",fontSize:11}}>/ {sub.name}</span>}
+          {d.duration&&<span style={{fontSize:11,color:"#94A3B8"}}>⏱ {d.duration}</span>}
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:60,height:4,background:"#E8E4FF",borderRadius:2,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${d.progress||0}%`,background:pc,borderRadius:2}}/>
+            </div>
+            <span style={{fontSize:11,fontWeight:700,color:pc,whiteSpace:"nowrap"}}>{d.progress||0}%</span>
+          </div>
+        </div>
+        <div style={{color:"#334155",fontSize:13,lineHeight:1.4}}>{d.content}</div>
+      </div>
+    );
+  };
+    const DailyR=()=>{
+    const ds=fmtD(cur),dt=byDate(ds),dl=dailyByDate(ds);
     const inP=tasks.filter(t=>t.status==="inprogress"&&t.deadline!==ds);
     const ov=tasks.filter(t=>t.status!=="done"&&t.deadline&&getDday(t.deadline)<0&&t.deadline!==ds);
     return(<div style={{padding:"0 14px"}}>
       {ov.length>0&&<div style={{marginBottom:14}}><div style={{color:"#F87171",fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:9,textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}}><AlertTri size={12}/>기한 초과 ({ov.length})</div>{ov.map(t=><SchedItem key={t.id} task={t} subGroups={subGroups} projects={projects} onEdit={onEdit}/>)}</div>}
       <div style={{marginBottom:14}}><div style={{color:"#3B82F6",fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:9,textTransform:"uppercase"}}>오늘 마감 ({dt.length})</div>
         {dt.length===0?<div style={{color:"#CBD5E1",fontSize:12,padding:"12px 0"}}>마감 업무 없음</div>:dt.map(t=><SchedItem key={t.id} task={t} subGroups={subGroups} projects={projects} onEdit={onEdit}/>)}</div>
-      {inP.length>0&&<div><div style={{color:"#FBBF24",fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:9,textTransform:"uppercase"}}>진행 중 ({inP.length})</div>{inP.map(t=><SchedItem key={t.id} task={t} subGroups={subGroups} projects={projects} onEdit={onEdit}/>)}</div>}
+      {inP.length>0&&<div style={{marginBottom:14}}><div style={{color:"#FBBF24",fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:9,textTransform:"uppercase"}}>진행 중 ({inP.length})</div>{inP.map(t=><SchedItem key={t.id} task={t} subGroups={subGroups} projects={projects} onEdit={onEdit}/>)}</div>}
+      {dl.length>0&&<div><div style={{color:"#6366F1",fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:9,textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}}>📝 업무 일지 ({dl.length})</div>{dl.map(d=><DailySchedCard key={d.id} d={d}/>)}</div>}
+      {dl.length===0&&dt.length===0&&inP.length===0&&ov.length===0&&<div style={{color:"#CBD5E1",fontSize:12,padding:"20px 0",textAlign:"center"}}>이 날 등록된 일정이 없어요</div>}
     </div>);
   };
   const WeeklyR=()=>{
@@ -813,7 +838,7 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
             <div style={{color:isW?"#F87171":"#94A3B8",fontSize:11,fontWeight:600}}>{WDAY_LBL[i]}</div>
             <div style={{color:isT?"#2563EB":isW?"#F87171":"#334155",fontSize:17,fontWeight:700,fontFamily:"monospace"}}>{dt.getDate()}</div>
           </div>
-          <div style={{padding:5}}>{trvs.map(t=><div key={"tr"+t.id} onClick={()=>onEdit(t)} style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)",color:"#7C3AED",fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>✈️ {t.title}</div>)}{items.map(t=><div key={t.id} onClick={()=>onEdit(t)} style={{background:`${getCatColor(t)}15`,border:`1px solid ${getCatColor(t)}30`,color:getCatColor(t),fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.isMeeting?"📅 ":""}{t.title}</div>)}</div>
+          <div style={{padding:5}}>{trvs.map(t=><div key={"tr"+t.id} onClick={()=>onEdit(t)} style={{background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)",color:"#7C3AED",fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>✈️ {t.title}</div>)}{items.map(t=><div key={t.id} onClick={()=>onEdit(t)} style={{background:`${getCatColor(t)}15`,border:`1px solid ${getCatColor(t)}30`,color:getCatColor(t),fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.isMeeting?"📅 ":""}{t.title}</div>)}{dailyByDate(ds).map(d=>{const pc=PROG_COL(d.progress||0);return(<div key={"dl"+d.id} style={{background:"rgba(99,102,241,0.08)",border:`1px solid rgba(99,102,241,0.2)`,borderLeft:`2px solid ${pc}`,color:"#6366F1",fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:3}}><span style={{flexShrink:0}}>📝</span><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{d.content}</span><span style={{marginLeft:"auto",flexShrink:0,color:pc,fontWeight:700}}>{d.progress||0}%</span></div>);})}</div>
         </div>);})}
     </div>);
   };
@@ -830,6 +855,7 @@ const ScheduleView=({tasks,subGroups,projects,onEdit,isMobile=false})=>{
           return(<div key={ds} style={{background:isT?"rgba(59,130,246,0.05)":"#FFFFFF",border:isT?"1px solid rgba(59,130,246,0.2)":"1px solid #E2E8F0",borderRadius:5,padding:5,minHeight:62}}>
             <div style={{color:isT?"#2563EB":isW?"#F87171":"#94A3B8",fontSize:12,fontWeight:isT?700:400,fontFamily:"monospace",marginBottom:3}}>{dt.getDate()}</div>
             {trvs.map(t=>{const isS=t.travelStart===ds,isE=!t.travelEnd||t.travelEnd===ds;return(<div key={"tr"+t.id} title={`✈️ ${t.title}`} style={{height:15,background:"rgba(124,58,237,0.75)",borderRadius:isS&&isE?"3px":isS?"3px 0 0 3px":isE?"0 3px 3px 0":"0",marginBottom:2,marginLeft:isS?0:-3,marginRight:isE?0:-3,display:"flex",alignItems:"center",paddingLeft:isS?4:0,overflow:"hidden"}}>{isS&&<span style={{color:"#fff",fontSize:9,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>✈️ {t.title}</span>}</div>);})}{items.slice(0,2).map(t=><div key={t.id} title={t.title} style={{height:4,background:getCatColor(t),borderRadius:2,marginBottom:2,opacity:0.7}}/>)}
+            {dailyByDate(ds).length>0&&<div title={`📝 일지 ${dailyByDate(ds).length}건`} style={{height:4,background:"#6366F1",borderRadius:2,marginBottom:2,opacity:0.6}}/>}
             {items.length>3&&<div style={{color:"#94A3B8",fontSize:10}}>+{items.length-3}</div>}
           </div>);
         })}
@@ -1455,7 +1481,7 @@ function App(){
         {view==="kanban"&&<KanbanView projects={filProjs} subGroups={subs} tasks={tasks} selProjId={selP} setSelProjId={setSelP} selSubId={selS} setSelSubId={setSelS}
           onProjModal={p=>setPModal(p||{})} onSubModal={s=>setSModal(s||{projectId:selP})} onTaskModal={t=>setTModal(t||{subGroupId:selS})}
           onDelProj={delProj} onDelSub={delSub} onDelTask={delTask} onMoveTask={moveTask} isMobile={isMobile} dailies={dailies} projs={projs} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry}/>}
-        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} onEdit={t=>setTModal(t)} isMobile={isMobile}/>}
+        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} dailies={dailies} onEdit={t=>setTModal(t)} isMobile={isMobile}/>}
         {view==="meeting"&&<MeetingView tasks={tasks} subGroups={subs} projects={projs} schedules={schedules} onEditTask={t=>setTModal(t)} onSchedModal={s=>setSchModal(s||{})} onDelSched={delSched} isMobile={isMobile}/>}
         {view==="daily"&&<DailyView dailies={dailies} onSave={saveDailyEntry} onDelete={delDailyEntry} projs={projs} subs={subs} isMobile={isMobile}/>}
         {view==="vendor"&&<VendorView vendors={vendors} projs={projs} subs={subs} tasks={tasks} onEdit={setVModal} onDelete={delVendor}/>}

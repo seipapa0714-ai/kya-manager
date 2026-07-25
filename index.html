@@ -778,10 +778,9 @@ const SchedItem=({task,subGroups,projects,onEdit})=>{
     </div>
   );
 };
-const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSaveDaily,onDelDaily,isMobile=false})=>{
+const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSaveDaily,onDelDaily,onOpenDailyForm,isMobile=false})=>{
   const [tab,setTab]=useState("weekly");
   const [cur,setCur]=useState(new Date());
-  const [dailyForm,setDailyForm]=useState(null); // {init,date,projId,subId}
   const nav=dir=>{const d=new Date(cur);if(tab==="monthly")d.setMonth(d.getMonth()+dir);else d.setDate(d.getDate()+dir*7);setCur(d);};
   const byDate=ds=>tasks.filter(t=>t.deadline===ds);
   const travelByDate=ds=>tasks.filter(t=>t.isTravel&&t.travelStart&&t.travelStart<=ds&&(!t.travelEnd||t.travelEnd>=ds));
@@ -810,7 +809,7 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSave
               <div style={{height:"100%",width:`${d.progress||0}%`,background:pc,borderRadius:2}}/>
             </div>
             <span style={{fontSize:11,fontWeight:700,color:pc,whiteSpace:"nowrap"}}>{d.progress||0}%</span>
-            <button onClick={()=>setDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{...sIBtn,padding:3,color:"#6366F1"}}><Edit2 size={12}/></button>
+            <button onClick={()=>onOpenDailyForm&&onOpenDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{...sIBtn,padding:3,color:"#6366F1"}}><Edit2 size={12}/></button>
             <button onClick={()=>{if(onDelDaily)onDelDaily(d.id);}} style={{...sIBtn,padding:3,color:"#F87171"}}><Trash2 size={12}/></button>
           </div>
         </div>
@@ -891,7 +890,7 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSave
             </div>
             {!isW&&<div style={{display:"flex",gap:1}}>
               <button onClick={()=>onEdit({deadline:ds})} style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:10,padding:"0 2px",lineHeight:1}}>+업무</button>
-              <button onClick={()=>setDailyForm({init:null,date:ds,projId:"",subId:""})} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",fontSize:10,padding:"0 2px",lineHeight:1}}>+일지</button>
+              <button onClick={()=>onOpenDailyForm&&onOpenDailyForm({init:null,date:ds,projId:"",subId:""})} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",fontSize:10,padding:"0 2px",lineHeight:1}}>+일지</button>
             </div>}
           </div>
           <div style={{padding:"4px 4px"}}>
@@ -912,7 +911,7 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSave
                 <span style={{fontSize:9,flexShrink:0}}>📝</span>
                 <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#6366F1",flex:1}}>{proj?proj.name+": ":""}{d.content}</span>
                 <span style={{fontSize:9,color:pc,flexShrink:0,fontWeight:700}}>{d.progress||0}%</span>
-                <button onClick={()=>setDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>✏️</button>
+                <button onClick={()=>onOpenDailyForm&&onOpenDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>✏️</button>
                 <button onClick={()=>{if(onDelDaily)onDelDaily(d.id);}} style={{background:"none",border:"none",color:"#F87171",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>🗑</button>
               </div>);
             })}
@@ -951,7 +950,7 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSave
           {incomplete.length===0&&<span style={{fontSize:11,color:"#10B981",fontWeight:600}}>🎉 모두 완료!</span>}
           <div style={{marginLeft:"auto",display:"flex",gap:6}}>
             <button onClick={()=>onEdit({})} style={{background:"rgba(37,99,235,0.08)",border:"1px solid rgba(37,99,235,0.2)",color:"#2563EB",fontSize:11,padding:"3px 10px",borderRadius:6,cursor:"pointer",fontWeight:600}}>+ 업무</button>
-            <button onClick={()=>setDailyForm({init:null,date:todayStr(),projId:"",subId:""})} style={{background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",color:"#6366F1",fontSize:11,padding:"3px 10px",borderRadius:6,cursor:"pointer",fontWeight:600}}>+ 일지</button>
+            <button onClick={()=>onOpenDailyForm&&onOpenDailyForm({init:null,date:todayStr(),projId:"",subId:""})} style={{background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",color:"#6366F1",fontSize:11,padding:"3px 10px",borderRadius:6,cursor:"pointer",fontWeight:600}}>+ 일지</button>
           </div>
         </div>
         {projGroups.map(({proj,items})=>{
@@ -1113,20 +1112,7 @@ const SchedModal=({sched,projects,onSave,onClose})=>{
           <button onClick={save} style={{background:f.title.trim()?"linear-gradient(135deg,#7C3AED,#4F46E5)":"#E2E8F0",border:"none",color:f.title.trim()?"#fff":"#94A3B8",padding:"7px 20px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:600}}>{f.id?"수정 완료":"추가하기"}</button>
         </div>
       </div>
-      {/* ── 일지 편집/추가 오버레이 ── */}
-      {dailyForm&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"#fff",borderRadius:16,padding:22,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <span style={{fontSize:15,fontWeight:700,color:"#334155"}}>{dailyForm.init?"📝 일지 수정":"📝 일지 추가"}</span>
-              <button onClick={()=>setDailyForm(null)} style={{...sIBtn,padding:4}}><X size={18}/></button>
-            </div>
-            <KanbanDailyForm init={dailyForm.init} projId={dailyForm.projId||""} subId={dailyForm.subId||""} projects={projects} subGroups={subGroups}
-              onSave={e=>{if(onSaveDaily)onSaveDaily(e);setDailyForm(null);}}
-              onCancel={()=>setDailyForm(null)}/>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
@@ -1490,6 +1476,7 @@ function App(){
   const [sModal,setSModal]=useState(null);
   const [tModal,setTModal]=useState(null);
   const [vModal,setVModal]=useState(null);
+  const [schedDailyModal,setSchedDailyModal]=useState(null);
   const [schModal,setSchModal]=useState(null);
   const [loading,setLoading]=useState(true);
   const [syncStatus,setSyncStatus]=useState("idle"); // idle|saving|saved|error
@@ -1632,7 +1619,7 @@ function App(){
         {view==="kanban"&&<KanbanView projects={filProjs} subGroups={subs} tasks={tasks} selProjId={selP} setSelProjId={setSelP} selSubId={selS} setSelSubId={setSelS}
           onProjModal={p=>setPModal(p||{})} onSubModal={s=>setSModal(s||{projectId:selP})} onTaskModal={t=>setTModal(t||{subGroupId:selS})}
           onDelProj={delProj} onDelSub={delSub} onDelTask={delTask} onMoveTask={moveTask} isMobile={isMobile} dailies={dailies} projs={projs} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry}/>}
-        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} dailies={dailies} onEdit={t=>setTModal(t)} onDelTask={delTask} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry} isMobile={isMobile}/>}
+        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} dailies={dailies} onEdit={t=>setTModal(t)} onDelTask={delTask} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry} onOpenDailyForm={f=>setSchedDailyModal(f)} isMobile={isMobile}/>}
         {view==="meeting"&&<MeetingView tasks={tasks} subGroups={subs} projects={projs} schedules={schedules} onEditTask={t=>setTModal(t)} onSchedModal={s=>setSchModal(s||{})} onDelSched={delSched} isMobile={isMobile}/>}
         {view==="daily"&&<DailyView dailies={dailies} onSave={saveDailyEntry} onDelete={delDailyEntry} projs={projs} subs={subs} isMobile={isMobile}/>}
         {view==="vendor"&&<VendorView vendors={vendors} projs={projs} subs={subs} tasks={tasks} onEdit={setVModal} onDelete={delVendor}/>}
@@ -1641,7 +1628,20 @@ function App(){
       {pModal!==null&&<ProjModal proj={pModal} vendors={vendors} onSave={saveProj} onClose={()=>setPModal(null)}/>}
       {sModal!==null&&<SubModal sg={sModal} parentName={sModal.projectId?projs.find(p=>p.id===sModal.projectId)?.name:null} vendors={vendors} onSave={saveSub} onClose={()=>setSModal(null)}/>}
       {tModal!==null&&<TaskModal task={tModal} projName={tCtx.projName} subName={tCtx.sgName} vendors={vendors} allSubs={subs} allProjs={projs} onSave={saveTask} onClose={()=>setTModal(null)}/>}
-      {vModal!==null&&<VendorModal vendor={vModal} onSave={saveVendor} onClose={()=>setVModal(null)}/>}
+      {vModal!==null&&<VendorModal vendor={vModal} onSave={saveVendor} onClose={()=>setVModal(null)}/> }
+      {schedDailyModal!==null&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,padding:22,width:"100%",maxWidth:500,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <span style={{fontSize:15,fontWeight:700,color:"#334155"}}>{schedDailyModal.init?"📝 일지 수정":"📝 일지 추가"}</span>
+              <button onClick={()=>setSchedDailyModal(null)} style={{...sIBtn,padding:4}}><X size={18}/></button>
+            </div>
+            <KanbanDailyForm init={schedDailyModal.init} projId={schedDailyModal.projId||""} subId={schedDailyModal.subId||""} projects={projs} subGroups={subs}
+              onSave={e=>{saveDailyEntry(e);setSchedDailyModal(null);}}
+              onCancel={()=>setSchedDailyModal(null)}/>
+          </div>
+        </div>
+      )}
       {schModal!==null&&<SchedModal sched={schModal} projects={projs} onSave={saveSched} onClose={()=>setSchModal(null)}/>}
     </div>
   );

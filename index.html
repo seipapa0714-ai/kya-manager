@@ -778,9 +778,10 @@ const SchedItem=({task,subGroups,projects,onEdit})=>{
     </div>
   );
 };
-const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})=>{
+const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,onDelTask,onSaveDaily,onDelDaily,isMobile=false})=>{
   const [tab,setTab]=useState("weekly");
   const [cur,setCur]=useState(new Date());
+  const [dailyForm,setDailyForm]=useState(null); // {init,date,projId,subId}
   const nav=dir=>{const d=new Date(cur);if(tab==="monthly")d.setMonth(d.getMonth()+dir);else d.setDate(d.getDate()+dir*7);setCur(d);};
   const byDate=ds=>tasks.filter(t=>t.deadline===ds);
   const travelByDate=ds=>tasks.filter(t=>t.isTravel&&t.travelStart&&t.travelStart<=ds&&(!t.travelEnd||t.travelEnd>=ds));
@@ -804,11 +805,13 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
           {proj&&<span style={{fontSize:11,fontWeight:700,color:(CATS[proj.category]||CATS.project).color,background:(CATS[proj.category]||CATS.project).bg,padding:"1px 6px",borderRadius:4}}>{proj.name}</span>}
           {sub&&<span style={{color:"#94A3B8",fontSize:11}}>/ {sub.name}</span>}
           {d.duration&&<span style={{fontSize:11,color:"#94A3B8"}}>⏱ {d.duration}</span>}
-          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
             <div style={{width:60,height:4,background:"#E8E4FF",borderRadius:2,overflow:"hidden"}}>
               <div style={{height:"100%",width:`${d.progress||0}%`,background:pc,borderRadius:2}}/>
             </div>
             <span style={{fontSize:11,fontWeight:700,color:pc,whiteSpace:"nowrap"}}>{d.progress||0}%</span>
+            <button onClick={()=>setDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{...sIBtn,padding:3,color:"#6366F1"}}><Edit2 size={12}/></button>
+            <button onClick={()=>{if(onDelDaily)onDelDaily(d.id);}} style={{...sIBtn,padding:3,color:"#F87171"}}><Trash2 size={12}/></button>
           </div>
         </div>
         <div style={{color:"#334155",fontSize:13,lineHeight:1.4}}>{d.content}</div>
@@ -878,13 +881,15 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
 
       {/* ── 미완료 업무 패널 ── */}
       <div style={{marginBottom:18}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-          <span style={{fontSize:12,fontWeight:700,color:"#334155",letterSpacing:0.5}}>
-            📌 미완료 업무
-          </span>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#334155",letterSpacing:0.5}}>📌 미완료 업무</span>
           <span style={{fontSize:11,background:"#F1F5F9",color:"#475569",padding:"1px 8px",borderRadius:10,fontWeight:600}}>{incomplete.length}건</span>
           {ovCnt>0&&<span style={{fontSize:11,background:"rgba(239,68,68,0.1)",color:"#DC2626",padding:"1px 8px",borderRadius:10,fontWeight:700}}>⚠️ 기한초과 {ovCnt}건</span>}
           {incomplete.length===0&&<span style={{fontSize:11,color:"#10B981",fontWeight:600}}>🎉 모두 완료!</span>}
+          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+            <button onClick={()=>onEdit({})} style={{background:"rgba(37,99,235,0.08)",border:"1px solid rgba(37,99,235,0.2)",color:"#2563EB",fontSize:11,padding:"3px 10px",borderRadius:6,cursor:"pointer",fontWeight:600}}>+ 업무</button>
+            <button onClick={()=>setDailyForm({init:null,date:todayStr(),projId:"",subId:""})} style={{background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",color:"#6366F1",fontSize:11,padding:"3px 10px",borderRadius:6,cursor:"pointer",fontWeight:600}}>+ 일지</button>
+          </div>
         </div>
         {projGroups.map(({proj,items})=>{
           const cat=proj?(CATS[proj.category]||CATS.project):CATS.misc;
@@ -903,11 +908,13 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
                   const dLabel=d===null?"기한없음":isOv?`D+${Math.abs(d)}`:d===0?"오늘 마감":`D-${d}`;
                   const dColor=isOv?"#DC2626":isToday?"#D97706":d!==null&&d<=3?"#F59E0B":"#94A3B8";
                   return(
-                    <div key={t.id} onClick={()=>onEdit(t)} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,background:isOv?"rgba(239,68,68,0.04)":isToday?"rgba(245,158,11,0.04)":"#FAFAFA",border:`1px solid ${isOv?"rgba(239,68,68,0.18)":isToday?"rgba(245,158,11,0.2)":"#E2E8F0"}`,cursor:"pointer"}}>
+                    <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:7,background:isOv?"rgba(239,68,68,0.04)":isToday?"rgba(245,158,11,0.04)":"#FAFAFA",border:`1px solid ${isOv?"rgba(239,68,68,0.18)":isToday?"rgba(245,158,11,0.2)":"#E2E8F0"}`}}>
                       <div style={{width:3,height:16,background:cc,borderRadius:2,flexShrink:0}}/>
                       {t.isMeeting&&<span style={{fontSize:10,flexShrink:0}}>📅</span>}
-                      <span style={{flex:1,fontSize:12,color:"#1E293B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title}</span>
+                      <span onClick={()=>onEdit(t)} style={{flex:1,fontSize:12,color:"#1E293B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}}>{t.title}</span>
                       <span style={{fontSize:11,fontWeight:700,color:dColor,whiteSpace:"nowrap",flexShrink:0,fontFamily:"monospace"}}>{dLabel}</span>
+                      <button onClick={()=>onEdit(t)} style={{...sIBtn,padding:2,color:"#6366F1",flexShrink:0}}><Edit2 size={11}/></button>
+                      <button onClick={e=>{e.stopPropagation();if(onDelTask)onDelTask(t.id);}} style={{...sIBtn,padding:2,color:"#F87171",flexShrink:0}}><Trash2 size={11}/></button>
                     </div>
                   );
                 })}
@@ -955,10 +962,16 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
           const allItems=[...projMiscItems,...personalItems];
           return(
             <div key={ds} style={{background:isT?"rgba(37,99,235,0.04)":"#FFFFFF",border:isT?"1.5px solid rgba(37,99,235,0.25)":"1px solid #E2E8F0",borderRadius:10,overflow:"hidden",minHeight:90,opacity:isW?0.65:1}}>
-              <div style={{padding:"6px 6px 5px",borderBottom:`2px solid ${isT?"#2563EB":isW?"#FCA5A5":"#F1F5F9"}`,display:"flex",alignItems:"baseline",justifyContent:"center",gap:3}}>
-                <span style={{color:isT?"#2563EB":isW?"#EF4444":"#334155",fontSize:16,fontWeight:800,fontFamily:"monospace",lineHeight:1}}>{dt.getDate()}</span>
-                <span style={{color:isT?"#93C5FD":isW?"#FCA5A5":"#CBD5E1",fontSize:10,fontWeight:600}}>{WDAY_LBL[i]}</span>
-                {hasDl&&<span style={{width:4,height:4,borderRadius:"50%",background:"#6366F1",display:"inline-block",marginLeft:2}}/>}
+              <div style={{padding:"5px 5px 4px",borderBottom:`2px solid ${isT?"#2563EB":isW?"#FCA5A5":"#F1F5F9"}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:2}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:2}}>
+                  <span style={{color:isT?"#2563EB":isW?"#EF4444":"#334155",fontSize:15,fontWeight:800,fontFamily:"monospace",lineHeight:1}}>{dt.getDate()}</span>
+                  <span style={{color:isT?"#93C5FD":isW?"#FCA5A5":"#CBD5E1",fontSize:10,fontWeight:600}}>{WDAY_LBL[i]}</span>
+                  {hasDl&&<span style={{width:4,height:4,borderRadius:"50%",background:"#6366F1",display:"inline-block",marginLeft:1}}/>}
+                </div>
+                {!isW&&<div style={{display:"flex",gap:1}}>
+                  <button onClick={()=>onEdit({deadline:ds})} title="업무 추가" style={{background:"none",border:"none",color:"#94A3B8",cursor:"pointer",fontSize:12,padding:"0 2px",lineHeight:1}}>+업무</button>
+                  <button onClick={()=>setDailyForm({init:null,date:ds,projId:"",subId:""})} title="일지 추가" style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",fontSize:12,padding:"0 2px",lineHeight:1}}>+일지</button>
+                </div>}
               </div>
               <div style={{padding:"4px 4px"}}>
                 {trvs.map(t=><div key={"tr"+t.id} onClick={()=>onEdit(t)} style={{fontSize:10,color:"#7C3AED",padding:"2px 4px",borderRadius:4,marginBottom:2,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"rgba(124,58,237,0.07)"}}>✈️ {t.title}</div>)}
@@ -967,14 +980,15 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
                   const isDeadlineToday=t.deadline===ds;
                   const isOv=t.deadline&&getDday(t.deadline)<0;
                   return(
-                    <div key={t.id} onClick={()=>onEdit(t)}
-                      style={{display:"flex",alignItems:"center",gap:3,fontSize:10,padding:"2px 4px",borderRadius:4,marginBottom:2,cursor:"pointer",overflow:"hidden",
+                    <div key={t.id}
+                      style={{display:"flex",alignItems:"center",gap:2,fontSize:10,padding:"2px 3px",borderRadius:4,marginBottom:2,overflow:"hidden",
                         background:isOv?"rgba(239,68,68,0.07)":isDeadlineToday?"rgba(245,158,11,0.08)":`${cc}0D`,
                         border:isDeadlineToday?`1px solid ${cc}40`:"none"}}>
                       <div style={{width:2,height:10,background:isOv?"#EF4444":cc,borderRadius:1,flexShrink:0}}/>
-                      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:isOv?"#DC2626":"#475569",flex:1}}>{t.title}</span>
-                      {isDeadlineToday&&<span style={{fontSize:9,color:cc,flexShrink:0,fontWeight:700}}>●</span>}
+                      <span onClick={()=>onEdit(t)} style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:isOv?"#DC2626":"#475569",flex:1,cursor:"pointer"}}>{t.title}</span>
                       {isOv&&<span style={{fontSize:9,color:"#DC2626",flexShrink:0}}>!</span>}
+                      <button onClick={()=>onEdit(t)} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>✏️</button>
+                      <button onClick={e=>{e.stopPropagation();if(onDelTask)onDelTask(t.id);}} style={{background:"none",border:"none",color:"#F87171",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>🗑</button>
                     </div>
                   );
                 })}
@@ -983,10 +997,12 @@ const ScheduleView=({tasks,subGroups,projects,dailies=[],onEdit,isMobile=false})
                   const pc=PROG_COL(d.progress||0);
                   const proj=projects.find(p=>p.id===d.projId);
                   return(
-                    <div key={"dl"+d.id} style={{display:"flex",alignItems:"center",gap:3,fontSize:10,padding:"2px 4px",borderRadius:4,marginBottom:2,overflow:"hidden",background:"rgba(99,102,241,0.07)",borderLeft:`2px solid ${pc}`}}>
+                    <div key={"dl"+d.id} style={{display:"flex",alignItems:"center",gap:2,fontSize:10,padding:"2px 3px",borderRadius:4,marginBottom:2,background:"rgba(99,102,241,0.07)",borderLeft:`2px solid ${pc}`}}>
                       <span style={{fontSize:9,flexShrink:0}}>📝</span>
                       <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#6366F1",flex:1}}>{proj?proj.name+": ":""}{d.content}</span>
                       <span style={{fontSize:9,color:pc,flexShrink:0,fontWeight:700}}>{d.progress||0}%</span>
+                      <button onClick={()=>setDailyForm({init:d,date:d.date,projId:d.projId,subId:d.subId})} style={{background:"none",border:"none",color:"#6366F1",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>✏️</button>
+                      <button onClick={()=>{if(onDelDaily)onDelDaily(d.id);}} style={{background:"none",border:"none",color:"#F87171",cursor:"pointer",padding:0,fontSize:10,flexShrink:0,lineHeight:1}}>🗑</button>
                     </div>
                   );
                 })}
@@ -1132,6 +1148,20 @@ const SchedModal=({sched,projects,onSave,onClose})=>{
         </div>
       </div>
     </div>
+    {/* ── 일지 편집/추가 오버레이 ── */}
+    {dailyForm&&(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div style={{background:"#fff",borderRadius:16,padding:22,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <span style={{fontSize:15,fontWeight:700,color:"#334155"}}>{dailyForm.init?"📝 일지 수정":"📝 일지 추가"}</span>
+            <button onClick={()=>setDailyForm(null)} style={{...sIBtn,padding:4}}><X size={18}/></button>
+          </div>
+          <KanbanDailyForm init={dailyForm.init} projId={dailyForm.projId||""} subId={dailyForm.subId||""} projects={projects} subGroups={subGroups}
+            onSave={e=>{if(onSaveDaily)onSaveDaily(e);setDailyForm(null);}}
+            onCancel={()=>setDailyForm(null)}/>
+        </div>
+      </div>
+    )}
   );
 };
 
@@ -1636,7 +1666,7 @@ function App(){
         {view==="kanban"&&<KanbanView projects={filProjs} subGroups={subs} tasks={tasks} selProjId={selP} setSelProjId={setSelP} selSubId={selS} setSelSubId={setSelS}
           onProjModal={p=>setPModal(p||{})} onSubModal={s=>setSModal(s||{projectId:selP})} onTaskModal={t=>setTModal(t||{subGroupId:selS})}
           onDelProj={delProj} onDelSub={delSub} onDelTask={delTask} onMoveTask={moveTask} isMobile={isMobile} dailies={dailies} projs={projs} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry}/>}
-        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} dailies={dailies} onEdit={t=>setTModal(t)} isMobile={isMobile}/>}
+        {view==="schedule"&&<ScheduleView tasks={filTasks} subGroups={subs} projects={projs} dailies={dailies} onEdit={t=>setTModal(t)} onDelTask={delTask} onSaveDaily={saveDailyEntry} onDelDaily={delDailyEntry} isMobile={isMobile}/>}
         {view==="meeting"&&<MeetingView tasks={tasks} subGroups={subs} projects={projs} schedules={schedules} onEditTask={t=>setTModal(t)} onSchedModal={s=>setSchModal(s||{})} onDelSched={delSched} isMobile={isMobile}/>}
         {view==="daily"&&<DailyView dailies={dailies} onSave={saveDailyEntry} onDelete={delDailyEntry} projs={projs} subs={subs} isMobile={isMobile}/>}
         {view==="vendor"&&<VendorView vendors={vendors} projs={projs} subs={subs} tasks={tasks} onEdit={setVModal} onDelete={delVendor}/>}
